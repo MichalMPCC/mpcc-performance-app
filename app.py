@@ -99,3 +99,28 @@ if st.button("Calculate"):
     ax3.set_yticks([])
     ax3.set_title("Metabolic Fingerprint (Radar Chart)", size=14)
     st.pyplot(fig3)
+    
+    # === FUEL USAGE CURVE (POWER VS. %FAT/CARB) ===
+    st.subheader("Fuel Usage vs. Power Curve")
+
+    power_range = np.linspace(0.4 * cp, 1.4 * cp, 100)
+    fat_curve = []
+    carb_curve = []
+
+    for p in power_range:
+        fat, carb = fuel_split(p, cp)
+        fat_curve.append(fat)
+        carb_curve.append(carb)
+
+    fig4, ax4 = plt.subplots()
+    ax4.plot(power_range, fat_curve, label="Fat %", color="green")
+    ax4.plot(power_range, carb_curve, label="Carbohydrate %", color="orange")
+    ax4.axvline(fatmax, color="blue", linestyle="--", label="FATmax")
+    ax4.axvline(cp, color="gray", linestyle="--", label="CP")
+    ax4.set_xlabel("Power (W)")
+    ax4.set_ylabel("Fuel Usage (%)")
+    ax4.set_title("Fuel Substrate Shift with Power")
+    ax4.set_ylim(0, 110)
+    ax4.legend()
+    ax4.grid(True)
+    st.pyplot(fig4)
