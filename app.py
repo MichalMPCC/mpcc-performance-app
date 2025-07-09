@@ -27,6 +27,7 @@ if st.button("Calculate"):
     cp, w_prime = calculate_cp_wprime(p_3min, p_12min)
     fatmax = estimate_fatmax(p_5min)
     vlamax = estimate_vlamax(p_15s, p_1min)
+    efficiency = cp / (vo2max if vo2max > 0 else 1)
 
     # === RESULTS ===
     st.subheader("Performance Metrics")
@@ -35,12 +36,12 @@ if st.button("Calculate"):
     st.write(f"**W′ (Anaerobic Work Capacity):** {w_prime:.1f} kJ")
     st.write(f"**VLamax (Estimate):** {vlamax:.2f} mmol/l/s")
     st.write(f"**FATmax Estimate:** {fatmax:.0f} W")
+    st.write(f"**Efficiency (CP / VO2max):** {efficiency:.2f} W / L O₂")
 
     # === POWER DURATION CURVE ===
     st.subheader("Power Duration Curve")
     durations = [15, 60, 180, 300, 720]
     powers = [p_15s, p_1min, p_3min, p_5min, p_12min]
-
     x = np.linspace(10, 900, 200)
     y = w_prime * 1000 / x + cp
 
@@ -55,16 +56,15 @@ if st.button("Calculate"):
     ax.grid(True)
     st.pyplot(fig)
 
-    # === SUBSTRATE USAGE CHART ===
+    # === SUBSTRATE USAGE BY ZONE ===
     st.subheader("Estimated Substrate Usage by Training Zone")
-
     zone_labels = ["Z1", "Z2", "Z3", "Z4", "Z5", "Z6", "Z7"]
     cp_ratios = [0.5, 0.65, 0.75, 0.90, 1.1, 1.35, 1.7]
-    powers = [round(cp * r) for r in cp_ratios]
+    zone_powers = [round(cp * r) for r in cp_ratios]
     fat_values = []
     carb_values = []
 
-    for p in powers:
+    for p in zone_powers:
         fat, carb = fuel_split(p, cp)
         fat_values.append(fat)
         carb_values.append(carb)
@@ -78,3 +78,24 @@ if st.button("Calculate"):
     ax2.legend()
     ax2.grid(True)
     st.pyplot(fig2)
+
+    # === METABOLIC FINGERPRINT RADAR CHART ===
+    st.subheader("Metabolic Fingerprint")
+
+    radar_labels = ["VO2max", "CP", "W′", "VLamax", "FATmax", "Efficiency"]
+    radar_values = [vo2max, cp, w_prime, vlamax, fatmax, efficiency]
+    max_norms = [85, 400, 30, 1.0, 250, 6.0]
+    radar_norm = [v / m for v, m in zip(radar_values, max_norms)]
+
+    angles = np.linspace(0, 2 * np.pi, len(radar_labels), endpoint=False).tolist()
+    radar_norm += radar_norm[:1]
+    angles += angles[:1]
+
+    fig3, ax3 = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
+    ax3.plot(angles, radar_norm, color='blue', linewidth=2)
+    ax3.fill(angles, radar_norm, color='blue', alpha=0.3)
+    ax3.set_xticks(angles[:-1])
+    ax3.set_xticklabels(radar_labels)
+    ax3.set_yticks([])
+    ax3.set_title("Metabolic Fingerprint (Radar Chart)", size=14)
+    st.pyplot(fig3)
