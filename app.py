@@ -43,20 +43,29 @@ if st.button("Calculate"):
     durations = [15, 60, 180, 300, 720]
     powers = [p_15s, p_1min, p_3min, p_5min, p_12min]
     x = np.linspace(10, 900, 200)
-    y = w_prime * 1000 / x + cp
+    y_fit = w_prime * 1000 / x + cp
+
+    # Goodness of Fit (%)
+    test_durations = [15, 60, 180, 300, 720]
+    test_fit = [w_prime * 1000 / d + cp for d in test_durations]
+    error = np.mean([abs((a - b) / a) for a, b in zip(powers, test_fit)])
+    goodness = 100 * (1 - error)
 
     fig, ax = plt.subplots()
-    ax.plot(x, y, label="Model Fit", color="blue")
+    ax.plot(x, y_fit, label="Model Fit", color="blue")
     ax.scatter(durations, powers, color="red", label="Test Data")
     ax.axhline(cp, color="gray", linestyle="--", label="CP")
     ax.set_xlabel("Duration (s)")
     ax.set_ylabel("Power (W)")
-    ax.set_title("Power Duration Curve")
+    ax.set_title(f"Power Duration Curve – Goodness of Fit: {goodness:.1f}%")
     ax.legend()
     ax.grid(True)
     st.pyplot(fig)
 
-    # === SUBSTRATE USAGE BY ZONE ===
+    if goodness < 90:
+        st.warning("⚠️ Goodness of Fit <90% – Check test pacing or execution.")
+
+    # === SUBSTRATE USAGE BY ZONE (BARS) ===
     st.subheader("Estimated Substrate Usage by Training Zone")
     zone_labels = ["Z1", "Z2", "Z3", "Z4", "Z5", "Z6", "Z7"]
     cp_ratios = [0.5, 0.65, 0.75, 0.90, 1.1, 1.35, 1.7]
@@ -81,12 +90,10 @@ if st.button("Calculate"):
 
     # === METABOLIC FINGERPRINT RADAR CHART ===
     st.subheader("Metabolic Fingerprint")
-
     radar_labels = ["VO2max", "CP", "W′", "VLamax", "FATmax", "Efficiency"]
     radar_values = [vo2max, cp, w_prime, vlamax, fatmax, efficiency]
     max_norms = [85, 400, 30, 1.0, 250, 6.0]
     radar_norm = [v / m for v, m in zip(radar_values, max_norms)]
-
     angles = np.linspace(0, 2 * np.pi, len(radar_labels), endpoint=False).tolist()
     radar_norm += radar_norm[:1]
     angles += angles[:1]
@@ -99,28 +106,32 @@ if st.button("Calculate"):
     ax3.set_yticks([])
     ax3.set_title("Metabolic Fingerprint (Radar Chart)", size=14)
     st.pyplot(fig3)
-    
-    # === FUEL USAGE CURVE (POWER VS. %FAT/CARB) ===
+
+    # === FUEL USAGE CURVE (LINE CHART) ===
     st.subheader("Fuel Usage vs. Power Curve")
 
     power_range = np.linspace(0.4 * cp, 1.4 * cp, 100)
     fat_curve = []
     carb_curve = []
+    carbmax_power = 0
 
     for p in power_range:
         fat, carb = fuel_split(p, cp)
         fat_curve.append(fat)
         carb_curve.append(carb)
+        if carb >= 99 and carbmax_power == 0:
+            carbmax_power = p
 
     fig4, ax4 = plt.subplots()
     ax4.plot(power_range, fat_curve, label="Fat %", color="green")
     ax4.plot(power_range, carb_curve, label="Carbohydrate %", color="orange")
-    ax4.axvline(fatmax, color="blue", linestyle="--", label="FATmax")
-    ax4.axvline(cp, color="gray", linestyle="--", label="CP")
+    ax4.axvline(fatmax, color="blue", linestyle="--", label=f"FATmax ({fatmax:.0f}W)")
+    ax4.axvline(carbmax_power, color="red", linestyle="--", label=f"CARBmax ({carbmax_power:.0f}W)")
+    ax4.axvline(cp, color="gray", linestyle="--", label=f"CP ({cp:.0f}W)")
     ax4.set_xlabel("Power (W)")
     ax4.set_ylabel("Fuel Usage (%)")
-    ax4.set_title("Fuel Substrate Shift with Power")
     ax4.set_ylim(0, 110)
+    ax4.set_title("Fuel Substrate Shift with Power")
     ax4.legend()
     ax4.grid(True)
     st.pyplot(fig4)
